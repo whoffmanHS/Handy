@@ -19,7 +19,16 @@
     "postProcessing": "后处理",
     "history": "历史记录",
     "debug": "调试",
+    "meeting": "Meeting",
     "about": "关于"
+  },
+  "meeting": {
+    "title": "Meeting",
+    "start": "Start Meeting",
+    "stop": "Stop Meeting",
+    "recordingApp": "Recording the microphone and the meeting app.",
+    "recordingSystem": "The meeting app isn't running, so all system audio is being recorded with the microphone.",
+    "saved": "Saved {{seconds}} seconds of audio."
   },
   "onboarding": {
     "customModelDescription": "非官方支持",
@@ -932,6 +941,8 @@
   "errors": {
     "loadDirectory": "加载目录时出错: {{error}}",
     "micPermissionDeniedTitle": "麦克风访问被拒绝",
+    "meetingAudioPermissionDeniedTitle": "Call Audio Access Denied",
+    "meetingAudioPermissionDenied": "Allow Handy in System Settings > Privacy & Security > Screen & System Audio Recording, under System Audio Recording Only, then start the meeting again.",
     "micPermissionDenied": {
       "generic": "操作系统拒绝了麦克风访问。请在系统设置中授予麦克风权限。",
       "windows": "在设置 → 隐私和安全性 → 麦克风（包括桌面应用访问）中启用麦克风访问。",

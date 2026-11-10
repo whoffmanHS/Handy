@@ -19,7 +19,16 @@
     "postProcessing": "Xử lý sau",
     "history": "Lịch sử",
     "debug": "Gỡ lỗi",
+    "meeting": "Meeting",
     "about": "Giới thiệu"
+  },
+  "meeting": {
+    "title": "Meeting",
+    "start": "Start Meeting",
+    "stop": "Stop Meeting",
+    "recordingApp": "Recording the microphone and the meeting app.",
+    "recordingSystem": "The meeting app isn't running, so all system audio is being recorded with the microphone.",
+    "saved": "Saved {{seconds}} seconds of audio."
   },
   "onboarding": {
     "customModelDescription": "Không được hỗ trợ chính thức",
@@ -932,6 +941,8 @@
   "errors": {
     "loadDirectory": "Lỗi khi tải thư mục: {{error}}",
     "micPermissionDeniedTitle": "Quyền truy cập micrô bị từ chối",
+    "meetingAudioPermissionDeniedTitle": "Call Audio Access Denied",
+    "meetingAudioPermissionDenied": "Allow Handy in System Settings > Privacy & Security > Screen & System Audio Recording, under System Audio Recording Only, then start the meeting again.",
     "micPermissionDenied": {
       "generic": "Quyền truy cập micrô đã bị hệ điều hành từ chối. Vui lòng cấp quyền micrô trong cài đặt hệ thống.",
       "windows": "Bật quyền truy cập micrô trong Cài đặt → Quyền riêng tư & bảo mật → Micrô (bao gồm quyền truy cập ứng dụng máy tính).",

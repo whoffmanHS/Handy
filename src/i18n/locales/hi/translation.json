@@ -19,7 +19,16 @@
     "postProcessing": "पोस्ट प्रोसेस",
     "history": "इतिहास",
     "debug": "डिबग",
+    "meeting": "Meeting",
     "about": "के बारे में"
+  },
+  "meeting": {
+    "title": "Meeting",
+    "start": "Start Meeting",
+    "stop": "Stop Meeting",
+    "recordingApp": "Recording the microphone and the meeting app.",
+    "recordingSystem": "The meeting app isn't running, so all system audio is being recorded with the microphone.",
+    "saved": "Saved {{seconds}} seconds of audio."
   },
   "onboarding": {
     "customModelDescription": "आधिकारिक रूप से समर्थित नहीं",
@@ -932,6 +941,8 @@
   "errors": {
     "loadDirectory": "फ़ोल्डर लोड करने में गड़बड़ी: {{error}}",
     "micPermissionDeniedTitle": "माइक्रोफ़ोन का ऐक्सेस नहीं दिया गया",
+    "meetingAudioPermissionDeniedTitle": "Call Audio Access Denied",
+    "meetingAudioPermissionDenied": "Allow Handy in System Settings > Privacy & Security > Screen & System Audio Recording, under System Audio Recording Only, then start the meeting again.",
     "micPermissionDenied": {
       "generic": "ऑपरेटिंग सिस्टम ने माइक्रोफ़ोन का ऐक्सेस नहीं दिया. कृपया अपनी सिस्टम सेटिंग में जाकर माइक्रोफ़ोन की अनुमति दें.",
       "windows": "Settings → Privacy & security → Microphone में माइक्रोफ़ोन ऐक्सेस चालू करें (डेस्कटॉप ऐप ऐक्सेस समेत).",

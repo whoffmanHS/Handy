@@ -19,7 +19,16 @@
     "postProcessing": "Son İşlem",
     "history": "Geçmiş",
     "debug": "Hata Ayıklama",
+    "meeting": "Meeting",
     "about": "Hakkında"
+  },
+  "meeting": {
+    "title": "Meeting",
+    "start": "Start Meeting",
+    "stop": "Stop Meeting",
+    "recordingApp": "Recording the microphone and the meeting app.",
+    "recordingSystem": "The meeting app isn't running, so all system audio is being recorded with the microphone.",
+    "saved": "Saved {{seconds}} seconds of audio."
   },
   "onboarding": {
     "customModelDescription": "Resmi olarak desteklenmiyor",
@@ -932,6 +941,8 @@
   "errors": {
     "loadDirectory": "Dizin yüklenirken hata oluştu: {{error}}",
     "micPermissionDeniedTitle": "Mikrofon erişimi reddedildi",
+    "meetingAudioPermissionDeniedTitle": "Call Audio Access Denied",
+    "meetingAudioPermissionDenied": "Allow Handy in System Settings > Privacy & Security > Screen & System Audio Recording, under System Audio Recording Only, then start the meeting again.",
     "micPermissionDenied": {
       "generic": "Mikrofon erişimi işletim sistemi tarafından reddedildi. Lütfen sistem ayarlarından mikrofon iznini verin.",
       "windows": "Ayarlar → Gizlilik ve güvenlik → Mikrofon (masaüstü uygulama erişimi dahil) bölümünden mikrofon erişimini etkinleştirin.",

@@ -19,7 +19,16 @@
     "postProcessing": "Post-Elaborazione",
     "history": "Cronologia",
     "debug": "Debug",
+    "meeting": "Meeting",
     "about": "Informazioni"
+  },
+  "meeting": {
+    "title": "Meeting",
+    "start": "Start Meeting",
+    "stop": "Stop Meeting",
+    "recordingApp": "Recording the microphone and the meeting app.",
+    "recordingSystem": "The meeting app isn't running, so all system audio is being recorded with the microphone.",
+    "saved": "Saved {{seconds}} seconds of audio."
   },
   "onboarding": {
     "customModelDescription": "Non ufficialmente supportato",
@@ -932,6 +941,8 @@
   "errors": {
     "loadDirectory": "Errore di caricamento cartella: {{error}}",
     "micPermissionDeniedTitle": "Accesso al microfono negato",
+    "meetingAudioPermissionDeniedTitle": "Call Audio Access Denied",
+    "meetingAudioPermissionDenied": "Allow Handy in System Settings > Privacy & Security > Screen & System Audio Recording, under System Audio Recording Only, then start the meeting again.",
     "micPermissionDenied": {
       "generic": "L'accesso al microfono è stato negato dal sistema operativo. Concedi l'autorizzazione al microfono nelle impostazioni di sistema.",
       "windows": "Abilita l'accesso al microfono in Impostazioni → Privacy e sicurezza → Microfono (incluso l'accesso delle app desktop).",

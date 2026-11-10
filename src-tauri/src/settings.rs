@@ -464,6 +464,10 @@ pub struct AppSettings {
     pub log_level: LogLevel,
     #[serde(default)]
     pub custom_words: Vec<String>,
+    /// Bundle ID of the app whose audio meeting mode records, helpers
+    /// included. The whole system is recorded when it isn't running.
+    #[serde(default = "default_meeting_target_app")]
+    pub meeting_target_app: String,
     #[serde(default)]
     pub model_unload_timeout: ModelUnloadTimeout,
     #[serde(default = "default_word_correction_threshold")]
@@ -663,6 +667,10 @@ fn default_debug_mode() -> bool {
 
 fn default_log_level() -> LogLevel {
     LogLevel::Debug
+}
+
+fn default_meeting_target_app() -> String {
+    "com.microsoft.teams2".to_string()
 }
 
 fn default_word_correction_threshold() -> f64 {
@@ -1026,6 +1034,7 @@ pub fn get_default_settings() -> AppSettings {
         debug_mode: false,
         log_level: default_log_level(),
         custom_words: Vec::new(),
+        meeting_target_app: default_meeting_target_app(),
         model_unload_timeout: ModelUnloadTimeout::default(),
         word_correction_threshold: default_word_correction_threshold(),
         history_limit: default_history_limit(),
