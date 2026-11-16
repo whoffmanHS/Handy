@@ -170,6 +170,9 @@ objc2-core-audio = "0.3"
 objc2-core-audio-types = "0.3"
 objc2-core-foundation = "0.3"
 rtrb = "0.4"
+# Meeting mode: the calendar event a meeting belongs to.
+objc2-event-kit = "0.3"
+block2 = "0.6"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk-layer-shell = { version = "0.8", features = ["v0_6"] }

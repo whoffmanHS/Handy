@@ -4,6 +4,8 @@
 <dict>
   <key>NSAudioCaptureUsageDescription</key>
   <string>Request system audio access to record the other side of a call locally</string>
+  <key>NSCalendarsFullAccessUsageDescription</key>
+  <string>Request calendar access to name a meeting note after its event and list who was invited</string>
   <key>NSMicrophoneUsageDescription</key>
   <string>Request microphone access to transcribe audio locally</string>
 </dict>

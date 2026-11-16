@@ -28,7 +28,20 @@
     "stop": "Stop Meeting",
     "recordingApp": "Recording the microphone and the meeting app.",
     "recordingSystem": "The meeting app isn't running, so all system audio is being recorded with the microphone.",
-    "saved": "Saved {{seconds}} seconds of audio."
+    "saved": "Saved a note for {{seconds}} seconds of meeting.",
+    "notes": "Meeting Notes",
+    "chooseFolder": "Choose Folder",
+    "noFolder": "No folder chosen. Meetings can't start until one is.",
+    "keepAudio": "Keep the audio next to the note",
+    "dealers": "Dealer names, separated by commas",
+    "saveDealers": "Save Dealers",
+    "titlePlaceholder": "Meeting title (optional)",
+    "newTitle": "New title",
+    "rename": "Rename",
+    "removeTag": "Remove {{tag}}",
+    "speakerName": "New speaker name",
+    "renameSpeaker": "Rename {{name}}",
+    "transcript": "Transcript"
   },
   "onboarding": {
     "customModelDescription": "Not officially supported",

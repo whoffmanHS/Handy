@@ -1024,17 +1024,18 @@ async updateRecordingRetentionPeriod(period: string) : Promise<Result<null, stri
 },
 /**
  * Starts recording a meeting: the microphone and the call app's audio.
+ * `title` names the note; without one it is called "Meeting".
  */
-async meetingStart() : Promise<Result<MeetingStarted, string>> {
+async meetingStart(title: string | null) : Promise<Result<MeetingStarted, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("meeting_start") };
+    return { status: "ok", data: await TAURI_INVOKE("meeting_start", { title }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
 /**
- * Stops the meeting being recorded and returns where its audio is.
+ * Stops the meeting being recorded and saves its note.
  */
 async meetingStop() : Promise<Result<MeetingStopped, string>> {
     try {
@@ -1043,6 +1044,71 @@ async meetingStop() : Promise<Result<MeetingStopped, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Gives the saved note at `path` a new title. Returns its new path.
+ */
+async meetingRename(path: string, title: string) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("meeting_rename", { path, title }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Takes a wrong dealer or ticket tag off the saved note at `path`.
+ */
+async meetingRemoveTag(path: string, kind: TagKind, tag: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("meeting_remove_tag", { path, kind, tag }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Renames a speaker throughout the saved note at `path`, such as
+ * "Speaker 1" to "Kyle". Returns how many lines changed.
+ */
+async meetingRenameSpeaker(path: string, from: string, to: string) : Promise<Result<number, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("meeting_rename_speaker", { path, from, to }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Sets whether the other side's voices are told apart in saved notes.
+ */
+async setMeetingSeparateSpeakers(separate: boolean) : Promise<void> {
+    await TAURI_INVOKE("set_meeting_separate_speakers", { separate });
+},
+/**
+ * Sets the folder meeting notes are saved in. `None` clears it.
+ */
+async setMeetingOutputFolder(folder: string | null) : Promise<void> {
+    await TAURI_INVOKE("set_meeting_output_folder", { folder });
+},
+/**
+ * Sets the note file name pattern: `{date}`, `{time}` and `{title}`.
+ */
+async setMeetingFilenamePattern(pattern: string) : Promise<void> {
+    await TAURI_INVOKE("set_meeting_filename_pattern", { pattern });
+},
+/**
+ * Sets whether a meeting's audio is kept next to its note.
+ */
+async setMeetingKeepAudio(keep: boolean) : Promise<void> {
+    await TAURI_INVOKE("set_meeting_keep_audio", { keep });
+},
+/**
+ * Sets the dealer names notes are tagged with. New names are also added to
+ * the custom words, so the speech model spells them right.
+ */
+async setMeetingDealers(dealers: string[]) : Promise<void> {
+    await TAURI_INVOKE("set_meeting_dealers", { dealers });
 },
 /**
  * Checks if the Mac is a laptop by detecting battery presence
@@ -1081,6 +1147,8 @@ async dismissOverlayNotice() : Promise<void> {
 
 export const events = __makeEvents__<{
 historyUpdatePayload: HistoryUpdatePayload,
+meetingSaved: MeetingSaved,
+meetingSegment: MeetingSegment,
 noticesChanged: NoticesChanged,
 recordingStateEvent: RecordingStateEvent,
 streamPhaseEvent: StreamPhaseEvent,
@@ -1089,6 +1157,8 @@ transcriptionCompleteEvent: TranscriptionCompleteEvent,
 transcriptionJob: TranscriptionJob
 }>({
 historyUpdatePayload: "history-update-payload",
+meetingSaved: "meeting-saved",
+meetingSegment: "meeting-segment",
 noticesChanged: "notices-changed",
 recordingStateEvent: "recording-state-event",
 streamPhaseEvent: "stream-phase-event",
@@ -1153,7 +1223,33 @@ spoken_languages?: string[]; overlay_position?: OverlayPosition; debug_mode?: bo
  * Bundle ID of the app whose audio meeting mode records, helpers
  * included. The whole system is recorded when it isn't running.
  */
-meeting_target_app?: string; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_keys?: SecretMap; post_process_models?: Partial<{ [key in string]: string }>; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; theme?: Theme; experimental_enabled?: boolean; lazy_stream_close?: boolean; 
+meeting_target_app?: string; 
+/**
+ * Leaves out what the microphone picks up of the call from the
+ * speakers. Not needed with headphones.
+ */
+meeting_echo_filter?: boolean; 
+/**
+ * Tells the people on the other side of the call apart in the saved
+ * note. Downloads a speaker model the first time.
+ */
+meeting_separate_speakers?: boolean; 
+/**
+ * Where meeting notes are saved. Meeting mode won't start without it.
+ */
+meeting_output_folder?: string | null; 
+/**
+ * The note's file name: `{date}`, `{time}` and `{title}` are filled in.
+ */
+meeting_filename_pattern?: string; 
+/**
+ * Keeps the meeting's audio, compressed, next to its note.
+ */
+meeting_keep_audio?: boolean; 
+/**
+ * Dealer names a note is tagged with when they come up in the meeting.
+ */
+meeting_dealers?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_keys?: SecretMap; post_process_models?: Partial<{ [key in string]: string }>; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; theme?: Theme; experimental_enabled?: boolean; lazy_stream_close?: boolean; 
 /**
  * Experimental, macOS only: move a Bluetooth headset (AirPods) to this
  * Mac while recording, so its microphone does not return silence while
@@ -1341,12 +1437,51 @@ export type LanguageStatus =
  */
 { kind: "auto_unavailable"; language: string; reason: AutoUnavailableReason }
 export type LogLevel = "trace" | "debug" | "info" | "warn" | "error"
+/**
+ * Sent as `meeting-saved` once a meeting's note is written.
+ */
+export type MeetingSaved = { note_path: string; audio_path: string | null }
+/**
+ * One stretch of speech. Sent as the `meeting-segment` event when it is
+ * transcribed. Times are seconds from the start of the meeting.
+ */
+export type MeetingSegment = { 
+/**
+ * Which side of the call it was heard on.
+ */
+speaker: Speaker; 
+/**
+ * Who to show it as: "Me", "Them", or "Speaker 1" and so on once the
+ * other side's voices have been told apart.
+ */
+name: string; start: number; end: number; text: string }
 export type MeetingStarted = { 
 /**
  * The recording in progress: stereo WAV, left = me, right = them.
  */
 path: string; call_audio: CallAudioSource }
-export type MeetingStopped = { path: string; duration_secs: number }
+export type MeetingStopped = { 
+/**
+ * The note that was saved.
+ */
+note_path: string; 
+/**
+ * The audio kept next to it, if audio is kept.
+ */
+audio_path: string | null; duration_secs: number; 
+/**
+ * Everything said, in time order.
+ */
+transcript: MeetingSegment[]; 
+/**
+ * Who was invited, from the calendar event: names to offer when a
+ * speaker is renamed.
+ */
+attendees: string[]; 
+/**
+ * The dealers and Jira tickets the note is tagged with.
+ */
+dealers: string[]; tickets: string[] }
 export type ModelInfo = { id: string; name: string; description: string; filename: string; source: ModelSource; size_mb: number; is_downloaded: boolean; is_downloading: boolean; partial_size: number; accuracy_score: number; speed_score: number; supports_translation: boolean; is_recommended: boolean; supported_languages: string[]; supports_language_selection: boolean; is_custom: boolean; supports_streaming: boolean; supports_language_detection: boolean }
 export type ModelLoadStatus = { is_loaded: boolean; current_model: string | null }
 /**
@@ -1512,6 +1647,7 @@ export type ShortcutActivation =
 "hold_or_toggle"
 export type ShortcutBinding = { id: string; name: string; description: string; default_binding: string; current_binding: string }
 export type SoundTheme = "marimba" | "pop" | "custom"
+export type Speaker = "Me" | "Them"
 /**
  * Phase of the streaming overlay card, emitted to drive its UI state.
  */
@@ -1544,6 +1680,7 @@ export type StreamTextEvent = { committed: string; tentative: string }
  * Semantic kind of "working" phase, used to localize the spinner label.
  */
 export type StreamWorkKind = "transcribing" | "polishing"
+export type TagKind = "dealer" | "ticket"
 /**
  * UI appearance mode. `System` follows the OS `prefers-color-scheme`; `Light`
  * and `Dark` force one of the two palettes Handy already ships.

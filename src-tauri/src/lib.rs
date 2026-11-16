@@ -815,6 +815,14 @@ pub fn run(cli_args: CliArgs) {
             commands::history::update_recording_retention_period,
             commands::meeting::meeting_start,
             commands::meeting::meeting_stop,
+            commands::meeting::meeting_rename,
+            commands::meeting::meeting_remove_tag,
+            commands::meeting::meeting_rename_speaker,
+            commands::meeting::set_meeting_separate_speakers,
+            commands::meeting::set_meeting_output_folder,
+            commands::meeting::set_meeting_filename_pattern,
+            commands::meeting::set_meeting_keep_audio,
+            commands::meeting::set_meeting_dealers,
             helpers::clamshell::is_laptop,
             notices::get_active_notices,
             notices::dismiss_notice,
@@ -828,6 +836,8 @@ pub fn run(cli_args: CliArgs) {
             transcription_coordinator::RecordingStateEvent,
             actions::TranscriptionCompleteEvent,
             notices::NoticesChanged,
+            meeting::MeetingSegment,
+            meeting::MeetingSaved,
         ]);
 
     #[cfg(debug_assertions)] // <- Only export on non-release builds

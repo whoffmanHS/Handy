@@ -19,6 +19,7 @@ use log::{info, warn};
 
 use super::resample::MonoResampler;
 use super::tap::ProcessTap;
+use super::transcriber::Progress;
 use crate::audio_toolkit::constants::WHISPER_SAMPLE_RATE;
 
 const TICK: Duration = Duration::from_millis(20);
@@ -88,8 +89,9 @@ pub fn spawn(
     tap: ProcessTap,
     call: rtrb::Consumer<f32>,
     mic: Receiver<Vec<f32>>,
+    progress: Arc<Progress>,
 ) -> Result<WriterHandle> {
-    let wav = WavWriter::create(
+    let mut wav = WavWriter::create(
         path,
         WavSpec {
             channels: 2,
@@ -99,13 +101,20 @@ pub fn spawn(
         },
     )
     .with_context(|| format!("Failed to create {}", path.display()))?;
+    // Puts the header on disk, for whoever reads the file while it grows.
+    wav.flush().context("Failed to start the meeting audio")?;
     let resampler = MonoResampler::new(tap.sample_rate())?;
     let stop = Arc::new(AtomicBool::new(false));
     let thread = thread::Builder::new()
         .name("meeting-writer".into())
         .spawn({
             let stop = Arc::clone(&stop);
-            move || run(wav, tap, call, mic, resampler, &stop)
+            move || {
+                let result = run(wav, tap, call, mic, resampler, &stop, &progress);
+                // Set on failure too, so the transcriber doesn't wait forever.
+                progress.finished.store(true, Ordering::Release);
+                result
+            }
         })
         .context("Failed to start the meeting writer thread")?;
     Ok(WriterHandle { stop, thread })
@@ -118,12 +127,14 @@ fn run(
     mic: Receiver<Vec<f32>>,
     mut resampler: MonoResampler,
     stop: &AtomicBool,
+    progress: &Progress,
 ) -> Result<()> {
     let started = Instant::now();
     let mut last_flush = started;
     let mut me = Channel::default();
     let mut them = Channel::default();
     let mut call_audio = Vec::new();
+    let mut written = 0u64;
 
     loop {
         // Read the flag first: audio that arrives before it is set is still
@@ -158,6 +169,7 @@ fn run(
 
         let paired = me.samples.len().min(them.samples.len());
         write_frames(&mut wav, &me.samples[..paired], &them.samples[..paired])?;
+        written += paired as u64;
         me.samples.drain(..paired);
         them.samples.drain(..paired);
 
@@ -167,6 +179,7 @@ fn run(
         if last_flush.elapsed() >= FLUSH_EVERY {
             last_flush = Instant::now();
             wav.flush().context("Failed to save the meeting audio")?;
+            progress.saved_frames.store(written, Ordering::Release);
             if let Err(error) = tap.refresh() {
                 warn!("Couldn't follow the call app's audio processes: {error}");
             }
@@ -178,6 +191,7 @@ fn run(
     drop(tap);
     wav.finalize()
         .context("Failed to finish the meeting audio")?;
+    progress.saved_frames.store(written, Ordering::Release);
     if dropped > 0 {
         warn!("Meeting recording lost {dropped} call audio samples");
     }

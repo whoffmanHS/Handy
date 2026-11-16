@@ -468,6 +468,26 @@ pub struct AppSettings {
     /// included. The whole system is recorded when it isn't running.
     #[serde(default = "default_meeting_target_app")]
     pub meeting_target_app: String,
+    /// Leaves out what the microphone picks up of the call from the
+    /// speakers. Not needed with headphones.
+    #[serde(default = "default_meeting_echo_filter")]
+    pub meeting_echo_filter: bool,
+    /// Tells the people on the other side of the call apart in the saved
+    /// note. Downloads a speaker model the first time.
+    #[serde(default = "default_meeting_separate_speakers")]
+    pub meeting_separate_speakers: bool,
+    /// Where meeting notes are saved. Meeting mode won't start without it.
+    #[serde(default)]
+    pub meeting_output_folder: Option<String>,
+    /// The note's file name: `{date}`, `{time}` and `{title}` are filled in.
+    #[serde(default = "default_meeting_filename_pattern")]
+    pub meeting_filename_pattern: String,
+    /// Keeps the meeting's audio, compressed, next to its note.
+    #[serde(default = "default_meeting_keep_audio")]
+    pub meeting_keep_audio: bool,
+    /// Dealer names a note is tagged with when they come up in the meeting.
+    #[serde(default)]
+    pub meeting_dealers: Vec<String>,
     #[serde(default)]
     pub model_unload_timeout: ModelUnloadTimeout,
     #[serde(default = "default_word_correction_threshold")]
@@ -667,6 +687,22 @@ fn default_debug_mode() -> bool {
 
 fn default_log_level() -> LogLevel {
     LogLevel::Debug
+}
+
+fn default_meeting_filename_pattern() -> String {
+    crate::meeting::note::DEFAULT_FILENAME_PATTERN.to_string()
+}
+
+fn default_meeting_separate_speakers() -> bool {
+    true
+}
+
+fn default_meeting_keep_audio() -> bool {
+    true
+}
+
+fn default_meeting_echo_filter() -> bool {
+    true
 }
 
 fn default_meeting_target_app() -> String {
@@ -1035,6 +1071,12 @@ pub fn get_default_settings() -> AppSettings {
         log_level: default_log_level(),
         custom_words: Vec::new(),
         meeting_target_app: default_meeting_target_app(),
+        meeting_echo_filter: default_meeting_echo_filter(),
+        meeting_separate_speakers: default_meeting_separate_speakers(),
+        meeting_output_folder: None,
+        meeting_filename_pattern: default_meeting_filename_pattern(),
+        meeting_keep_audio: default_meeting_keep_audio(),
+        meeting_dealers: Vec::new(),
         model_unload_timeout: ModelUnloadTimeout::default(),
         word_correction_threshold: default_word_correction_threshold(),
         history_limit: default_history_limit(),

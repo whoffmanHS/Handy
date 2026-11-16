@@ -5,17 +5,32 @@
 //! is unavailable and the rest of the app is unaffected.
 
 #[cfg(target_os = "macos")]
+mod calendar;
+mod echo;
+#[cfg(target_os = "macos")]
 mod mic;
+pub mod note;
 #[cfg(target_os = "macos")]
 mod resample;
 #[cfg(target_os = "macos")]
+mod save;
+#[cfg(target_os = "macos")]
+mod segmenter;
+#[cfg(target_os = "macos")]
+mod speakers;
+#[cfg(target_os = "macos")]
 mod tap;
+mod timeline;
+#[cfg(target_os = "macos")]
+mod transcriber;
 #[cfg(target_os = "macos")]
 mod writer;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::AppHandle;
+
+pub use timeline::MeetingSegment;
 
 /// Where the call audio is coming from.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Type)]
@@ -36,8 +51,26 @@ pub struct MeetingStarted {
 
 #[derive(Clone, Debug, Serialize, Type)]
 pub struct MeetingStopped {
-    pub path: String,
+    /// The note that was saved.
+    pub note_path: String,
+    /// The audio kept next to it, if audio is kept.
+    pub audio_path: Option<String>,
     pub duration_secs: f64,
+    /// Everything said, in time order.
+    pub transcript: Vec<MeetingSegment>,
+    /// Who was invited, from the calendar event: names to offer when a
+    /// speaker is renamed.
+    pub attendees: Vec<String>,
+    /// The dealers and Jira tickets the note is tagged with.
+    pub dealers: Vec<String>,
+    pub tickets: Vec<String>,
+}
+
+/// Sent as `meeting-saved` once a meeting's note is written.
+#[derive(Clone, Debug, Serialize, Deserialize, Type, tauri_specta::Event)]
+pub struct MeetingSaved {
+    pub note_path: String,
+    pub audio_path: Option<String>,
 }
 
 pub struct MeetingManager {
@@ -57,7 +90,7 @@ impl MeetingManager {
     }
 
     #[cfg(not(target_os = "macos"))]
-    pub fn start(&self) -> Result<MeetingStarted, String> {
+    pub fn start(&self, _title: Option<String>) -> Result<MeetingStarted, String> {
         Err("Meeting mode needs macOS 14.4 or later".into())
     }
 
@@ -71,15 +104,23 @@ impl MeetingManager {
 mod macos {
     use std::path::PathBuf;
     use std::sync::mpsc;
-    use std::sync::{MutexGuard, PoisonError};
+    use std::sync::Arc;
+    use std::sync::{Mutex, MutexGuard, PoisonError};
     use std::time::Instant;
+
+    use chrono::{DateTime, Local};
+    use tauri_specta::Event;
 
     use log::{error, info};
 
+    use super::calendar::{self, CalendarEvent};
     use super::mic::MicCapture;
+    use super::save::{self, FinishedMeeting};
+    use super::speakers;
     use super::tap::{ProcessTap, TapError, TapScope};
+    use super::transcriber::{self, Progress, TranscriberHandle};
     use super::writer::{self, WriterHandle};
-    use super::{CallAudioSource, MeetingManager, MeetingStarted, MeetingStopped};
+    use super::{CallAudioSource, MeetingManager, MeetingSaved, MeetingStarted, MeetingStopped};
     use crate::managers::audio::recording_notice_code;
     use crate::notices::{self, Notice, NoticeCode, NoticeSource};
     use crate::settings::get_settings;
@@ -87,8 +128,14 @@ mod macos {
     pub struct ActiveMeeting {
         mic: MicCapture,
         writer: WriterHandle,
+        transcriber: TranscriberHandle,
         path: PathBuf,
+        title: Option<String>,
+        /// The calendar event happening when the meeting started, once it
+        /// has been looked up.
+        event: Arc<Mutex<Option<CalendarEvent>>>,
         started: Instant,
+        started_at: DateTime<Local>,
     }
 
     impl MeetingManager {
@@ -97,12 +144,17 @@ mod macos {
         }
 
         /// Starts recording the microphone and the call app into a new file.
-        pub fn start(&self) -> Result<MeetingStarted, String> {
+        ///
+        /// `title` names the note; without one it is called "Meeting".
+        pub fn start(&self, title: Option<String>) -> Result<MeetingStarted, String> {
             let mut active = self.active();
             if active.is_some() {
                 return Err("A meeting is already being recorded".into());
             }
             let settings = get_settings(&self.app);
+            // Checked before anything is recorded: there must be somewhere
+            // to save the note.
+            save::output_folder(&settings).map_err(|error| error.to_string())?;
             let path = self.new_recording_path()?;
 
             let (tap, call) = ProcessTap::start(&settings.meeting_target_app)
@@ -118,13 +170,44 @@ mod macos {
                 self.fail(recording_notice_code(&error), error.to_string())
             })?;
 
-            let writer = match writer::spawn(&path, tap, call, mic_receiver) {
-                Ok(writer) => writer,
+            let progress = Arc::new(Progress::default());
+            let started = writer::spawn(&path, tap, call, mic_receiver, Arc::clone(&progress))
+                .and_then(|writer| {
+                    // The writer has put the file's header on disk by now.
+                    match transcriber::spawn(&self.app, &path, progress) {
+                        Ok(transcriber) => Ok((writer, transcriber)),
+                        Err(error) => {
+                            let _ = writer.finish();
+                            Err(error)
+                        }
+                    }
+                });
+            let (writer, transcriber) = match started {
+                Ok(started) => started,
                 Err(error) => {
                     mic.stop();
                     return Err(self.fail(NoticeCode::RecordingFailed, format!("{error:#}")));
                 }
             };
+
+            // Looked up off to the side: the first time, macOS asks the
+            // user for calendar access, and recording mustn't wait for that.
+            let event = Arc::new(Mutex::new(None));
+            let found = Arc::clone(&event);
+            let lookup = std::thread::Builder::new()
+                .name("meeting-calendar".into())
+                .spawn(move || {
+                    let event = calendar::current_event();
+                    *found.lock().unwrap_or_else(PoisonError::into_inner) = event;
+                });
+            if let Err(error) = lookup {
+                error!("Couldn't start the calendar lookup: {error}");
+            }
+
+            if settings.meeting_separate_speakers {
+                // Fetched now, if it's missing, so it is there at the end.
+                speakers::prepare(&self.app);
+            }
 
             notices::clear(&self.app, NoticeSource::Meeting);
             info!(
@@ -138,8 +221,12 @@ mod macos {
             *active = Some(ActiveMeeting {
                 mic,
                 writer,
+                transcriber,
                 path,
+                title,
+                event,
                 started: Instant::now(),
+                started_at: Local::now(),
             });
             Ok(started)
         }
@@ -154,13 +241,64 @@ mod macos {
             // The microphone first, so its last audio is queued before the
             // writer does its final pass.
             meeting.mic.stop();
-            meeting
-                .writer
-                .finish()
+            let recorded = meeting.writer.finish();
+            // The transcriber ends once the writer has, failed or not.
+            let transcript = meeting.transcriber.finish();
+            recorded
                 .map_err(|error| self.fail(NoticeCode::RecordingFailed, format!("{error:#}")))?;
+            let settings = get_settings(&self.app);
+            // While the recording is still there to listen to.
+            let transcript = if settings.meeting_separate_speakers {
+                speakers::label(&self.app, &meeting.path, transcript)
+            } else {
+                transcript
+            };
+
+            let event = meeting
+                .event
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .take();
+            let (event_title, attendees) = match event {
+                Some(event) => (Some(event.title), event.attendees),
+                None => (None, Vec::new()),
+            };
+            let saved = save::save(
+                &settings,
+                FinishedMeeting {
+                    recording: meeting.path,
+                    started: meeting.started_at,
+                    duration_secs,
+                    // The user's own title wins over the calendar's.
+                    title: meeting
+                        .title
+                        .filter(|title| !title.trim().is_empty())
+                        .or(event_title),
+                    attendees: attendees.clone(),
+                    transcript: transcript.clone(),
+                },
+            )
+            .map_err(|error| self.fail(NoticeCode::RecordingFailed, format!("{error:#}")))?;
+
+            let note_path = saved.note.to_string_lossy().into_owned();
+            let audio_path = saved
+                .audio
+                .map(|audio| audio.to_string_lossy().into_owned());
+            let event = MeetingSaved {
+                note_path: note_path.clone(),
+                audio_path: audio_path.clone(),
+            };
+            if let Err(error) = event.emit(&self.app) {
+                error!("Failed to emit meeting-saved: {error}");
+            }
             Ok(MeetingStopped {
-                path: meeting.path.to_string_lossy().into_owned(),
+                note_path,
+                audio_path,
                 duration_secs,
+                transcript,
+                attendees,
+                dealers: saved.dealers,
+                tickets: saved.tickets,
             })
         }
 
