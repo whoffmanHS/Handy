@@ -18,6 +18,7 @@ mod save;
 mod segmenter;
 #[cfg(target_os = "macos")]
 mod speakers;
+pub mod summary;
 #[cfg(target_os = "macos")]
 mod tap;
 mod timeline;

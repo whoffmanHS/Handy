@@ -42,6 +42,25 @@ pub fn process_text_with_system_prompt(
         process_text_with_system_prompt_apple(system_cstr.as_ptr(), user_cstr.as_ptr(), max_tokens)
     };
 
+    read_response(response_ptr)
+}
+
+extern "C" {
+    pub fn generate_text_apple(
+        system_prompt: *const c_char,
+        user_content: *const c_char,
+    ) -> *mut AppleLLMResponse;
+}
+
+/// Free-form text from Apple Intelligence, with no output shape imposed.
+pub fn generate_text(system_prompt: &str, user_content: &str) -> Result<String, String> {
+    let system_cstr = CString::new(system_prompt).map_err(|e| e.to_string())?;
+    let user_cstr = CString::new(user_content).map_err(|e| e.to_string())?;
+    let response_ptr = unsafe { generate_text_apple(system_cstr.as_ptr(), user_cstr.as_ptr()) };
+    read_response(response_ptr)
+}
+
+fn read_response(response_ptr: *mut AppleLLMResponse) -> Result<String, String> {
     if response_ptr.is_null() {
         return Err("Null response from Apple LLM".to_string());
     }

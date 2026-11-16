@@ -128,6 +128,64 @@ public func processTextWithSystemPrompt(
     return responsePtr
 }
 
+@_cdecl("generate_text_apple")
+public func generateText(
+    _ systemPrompt: UnsafePointer<CChar>,
+    _ userContent: UnsafePointer<CChar>
+) -> UnsafeMutablePointer<AppleLLMResponse> {
+    let swiftSystemPrompt = String(cString: systemPrompt)
+    let swiftUserContent = String(cString: userContent)
+    let responsePtr = ResponsePointer.allocate(capacity: 1)
+    responsePtr.initialize(to: AppleLLMResponse(response: nil, success: 0, error_message: nil))
+
+    guard #available(macOS 26.0, *) else {
+        responsePtr.pointee.error_message = duplicateCString(
+            "Apple Intelligence requires macOS 26 or newer."
+        )
+        return responsePtr
+    }
+
+    let model = SystemLanguageModel.default
+    guard model.availability == .available else {
+        responsePtr.pointee.error_message = duplicateCString(
+            "Apple Intelligence is not currently available on this device."
+        )
+        return responsePtr
+    }
+
+    let semaphore = DispatchSemaphore(value: 0)
+
+    final class ResultBox: @unchecked Sendable {
+        var response: String?
+        var error: String?
+    }
+    let box = ResultBox()
+
+    Task.detached(priority: .utility) {
+        defer { semaphore.signal() }
+        do {
+            let session = LanguageModelSession(
+                model: model,
+                instructions: swiftSystemPrompt
+            )
+            box.response = try await session.respond(to: swiftUserContent).content
+        } catch {
+            box.error = error.localizedDescription
+        }
+    }
+
+    semaphore.wait()
+
+    if let response = box.response {
+        responsePtr.pointee.response = duplicateCString(response)
+        responsePtr.pointee.success = 1
+    } else {
+        responsePtr.pointee.error_message = duplicateCString(box.error ?? "Unknown error")
+    }
+
+    return responsePtr
+}
+
 @_cdecl("free_apple_llm_response")
 public func freeAppleLLMResponse(_ response: UnsafeMutablePointer<AppleLLMResponse>?) {
     guard let response = response else { return }
